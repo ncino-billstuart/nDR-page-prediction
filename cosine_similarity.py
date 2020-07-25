@@ -13,13 +13,22 @@ from sklearn.metrics.pairwise import linear_kernel, cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='test.log', level=logging.INFO,
+                    format='%(asctime)s:%(levelname)s:%(module)s:%(funcName)s:%(message)s')
+
+
 # import python files
 import preprocess_data
 import store_and_load_functions
 import vectorize_templates
+import postprocess_predictions
 
 
 def load_proper_templates(year):
+    
     vect = store_and_load_functions.load_pickle(path='nDR-page-prediction/vectorized_templates/' + str(year) + '/', file_name='vect')
     vect_templates = store_and_load_functions.load_pickle(path='nDR-page-prediction/vectorized_templates/' + str(year) + '/', file_name='vect_templates')
     templates_columns = store_and_load_functions.load_pickle(path='nDR-page-prediction/vectorized_templates/' + str(year) + '/', file_name='templates_columns')
@@ -28,12 +37,14 @@ def load_proper_templates(year):
 
 
 def vectorize_test_data(doc, vect):
+    
     vect_doc = vect.transform(doc['text'])
     
     return vect_doc
     
     
 def calculate_similarity(vect_doc, vect_templates, templates_columns):
+    
     # calculate similarity
     similarities = cosine_similarity(vect_doc, vect_templates)
     similarities = pd.DataFrame(similarities).round(3)
@@ -51,8 +62,10 @@ def calculate_similarity(vect_doc, vect_templates, templates_columns):
     similarities.columns = ['y_pred_raw', 'y_pred_raw_2nd', 'y_pred_similarity', 'y_pred_similarity_2nd']
     
     return similarities
-
+    
+    
 def merge_similarities_and_doc(similarities, doc):
+    
     # merge back to fields we care about
     similarities = pd.merge(doc.reset_index()[['index', 'file_name', 'target', 'year', 'page', 'text']],
                             similarities, how='inner', left_index=True, right_index=True)
@@ -61,17 +74,27 @@ def merge_similarities_and_doc(similarities, doc):
     
 
 def main(docs, templates):
+    
     start = time.time()
-    year = doc['year'].unique()[0]
-    vect, vect_templates, templates_columns = load_proper_templates(year)
-    vect_doc = vectorize_test_data(doc, vect)
-    similarities = calculate_similarity(vect_doc, vect_templates, templates_columns)
-    similarities = merge_similarities_and_doc(similarities, doc)
+    
+    similarities_all = pd.DataFrame()
+    i = 0
+    
+    for file_name, doc in docs.groupby(['file_name']):
+        year = doc['year'].unique()[0]
+        vect, vect_templates, templates_columns = load_proper_templates(year)
+        vect_doc = vectorize_test_data(doc, vect)
+        similarities = calculate_similarity(vect_doc, vect_templates, templates_columns)
+        similarities = merge_similarities_and_doc(similarities, doc)
+        similarities_all = similarities_all.append(similarities)
+        i+=1
 
-    print("cosine_similarity complete in {}s".format(round(time.time() - start, 4)))
+    logging.info("{0}s, {1}s avg per doc".format(round(time.time() - start, 4), round((time.time() - start)/i, 4)))
     return similarities
 
+
 if __name__ == '__main__':
+    
     vectorize_templates_bool = True
     
     docs, templates = preprocess_data.main()
@@ -79,10 +102,8 @@ if __name__ == '__main__':
     if vectorize_templates_bool:
         vectorize_templates.main(templates)
     
-    similarities_all = pd.DataFrame()
+    similarities = main(docs, templates)
     
-    for file_name, doc in docs.groupby(['file_name']):
-        similarities = main(docs, templates)
-        similarities_all = similarities_all.append(similarities)
+    similarities = postprocess_predictions.main(similarities)
 
-    similarities_all.to_csv('nDR-page-prediction/results/similarities.csv')
+    similarities.to_csv('nDR-page-prediction/results/similarities.csv')
