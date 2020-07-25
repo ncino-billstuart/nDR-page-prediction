@@ -1,10 +1,13 @@
 import pandas as pd
 import time
+import logging
+
 # import python files
 import store_and_load_functions
 
 
 def preprocess_templates(templates):
+    
     templates = templates.sort_values(by='type_year').reset_index(drop=True)
     templates['type'] = templates['type'].str.lower()
     
@@ -12,6 +15,7 @@ def preprocess_templates(templates):
     
     
 def preprocess_ocr(docs):
+    
     keep_columns = ['file_name', 'year_file_name', 'page_results', 'target', 'text']
     docs = docs[keep_columns]
     docs = docs.rename(columns={'year_file_name': 'year', 'page_results': 'page'})
@@ -29,6 +33,7 @@ def preprocess_ocr(docs):
 
 
 def main():
+    
     start = time.time()
     path = 'predictions/'
     bucket = 'sagemaker-page-prediction-poc'
@@ -41,10 +46,11 @@ def main():
     templates = preprocess_templates(templates)
     docs = preprocess_ocr(docs)
     
-    print("preprocess_data complete in {}s".format(round(time.time() - start, 4)))
+    logging.info("{}s".format(round(time.time() - start, 4)))
     return docs, templates
 
 
 if __name__ == '__main__':
+    
     docs, templates = main()
     print("complete")

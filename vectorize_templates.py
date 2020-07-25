@@ -1,6 +1,7 @@
 import pickle
 from sklearn.feature_extraction.text import TfidfVectorizer
 import time
+import logging
 
 # import python files
 import preprocess_data
@@ -17,6 +18,7 @@ def vectorize_templates(templates):
     
     
 def main(templates):
+    
     start = time.time()
     
     for name, group in templates.groupby(['year']):
@@ -25,8 +27,9 @@ def main(templates):
         store_and_load_functions.store_pickle(vect, path='nDR-page-prediction/vectorized_templates/' + str(name) + '/', file_name='vect')
         store_and_load_functions.store_pickle(templates_columns, path='nDR-page-prediction/vectorized_templates/' + str(name) + '/', file_name='templates_columns')
 
-    print("vectorize_templates complete in {}s".format(round(time.time() - start, 4)))
+    logging.info("{}s".format(round(time.time() - start, 4)))
 
 if __name__ == '__main__':
+    
     docs, templates = preprocess_data.main()
     main(templates)

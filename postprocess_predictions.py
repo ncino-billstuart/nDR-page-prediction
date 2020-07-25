@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import time
+import logging
 
 def create_helper_objects():
 
@@ -18,6 +20,7 @@ def create_helper_objects():
              'schedule3': ['schedule3page1'],
              'schedule4': ['schedule4page1'],
                         }
+                        
       k1_forms = ['schedulecpage1', '1040page1']
       
       return supported_pages, k1_forms
@@ -82,6 +85,7 @@ def prediction_logic(similarities, supported_pages, k1_forms):
       
       
 def merge_predictions_to_docs(y_pred_processed, similarities):
+      
       similarities = pd.merge(similarities, y_pred_processed, how='inner', left_index=True, right_index=True)
       similarities['y_pred_match'] = np.where(similarities['y_pred_processed'] == similarities['target'], 1, 0)
       similarities['y_pred_processed_form'] = similarities['y_pred_processed'].str.split('page').str[0]
@@ -90,10 +94,13 @@ def merge_predictions_to_docs(y_pred_processed, similarities):
       
 
 def main(similarities):
+      
+      start = time.time()
       supported_pages, k1_forms = create_helper_objects()
       y_pred_processed = prediction_logic(similarities, supported_pages, k1_forms)
       similarities = merge_predictions_to_docs(y_pred_processed, similarities)
       
+      logging.info("{}s".format(round(time.time() - start, 4)))
       return similarities
       
       
