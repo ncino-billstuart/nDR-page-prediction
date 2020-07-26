@@ -3,7 +3,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import time
 import logging
 
-# import python files
+# local app imports
 import preprocess_data
 import store_and_load_functions
 
