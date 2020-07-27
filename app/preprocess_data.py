@@ -2,8 +2,8 @@ import pandas as pd
 import time
 import logging
 
-# import python files
-import store_and_load_functions
+# local app imports
+import app.store_and_load_functions as store_and_load_functions
 
 
 def preprocess_templates(templates):

@@ -1,5 +1,8 @@
 import boto3
 import time
+import os
+import sys
+import inspect
 from io import StringIO
 import pandas as pd
 import numpy as np
@@ -16,15 +19,18 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 import logging
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='test.log', level=logging.INFO,
+logging.basicConfig(filename='nDR-page-prediction/results/log_cosine_similarity.log', level=logging.INFO,
                     format='%(asctime)s:%(levelname)s:%(module)s:%(funcName)s:%(message)s')
 
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
 
-# import python files
-import preprocess_data
-import store_and_load_functions
-import vectorize_templates
-import postprocess_predictions
+# local app imports
+import app.preprocess_data as preprocess_data
+import app.store_and_load_functions as store_and_load_functions
+import app.vectorize_templates as vectorize_templates
+import app.postprocess_predictions as postprocess_predictions
 
 
 def load_proper_templates(year):
