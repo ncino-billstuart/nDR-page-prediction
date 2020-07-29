@@ -19,14 +19,6 @@ def add_features(similarities):
       return similarities
 
 
-def identify_duplicate_pages(similarities):
-      
-      similarities['y_pred_count'] = similarities.groupby(['file_name', 'y_pred_processed'])['y_pred_processed'].transform('count')
-      similarities.loc[similarities['y_pred_processed'] == 'other', 'y_pred_count'] = 0
-
-      return similarities
-
-
 def create_visuals(similarities):
       
       # precision: proportion of positive predictions actually correct
@@ -96,7 +88,6 @@ def determine_error_type(similarities):
 def main(similarities):
       
       similarities = add_features(similarities)
-      similarities = identify_duplicate_pages(similarities)
       create_visuals(similarities)
       calculate_page_performance(similarities)
       calculate_doc_performance(similarities)
