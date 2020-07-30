@@ -2,41 +2,32 @@ import pandas as pd
 import numpy as np
 import time
 import logging
+import os, inspect, sys
 
-def create_helper_objects():
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
 
-      supported_pages = {
-             'other': ['other'],  # can have multiple
-             '1120s': ['1120spage1', '1120spage3', '1120spage4', '1120spage5'],
-             '1040': ['1040page1', '1040page2'], 
-             'schedulec': ['schedulecpage1', 'schedulecpage2'],  # can have multiple
-             'schedule': ['scheduleepage1'],  # can have multiple  # can be missing page 2
-             '1065': ['1065page1', '1065page4', '1065page5'],
-             'k11065': ['k11065page1'],  # can have multiple and be uploaded with 1065 or with a 1040
-             '8825': ['8825page1', '8825page2'],  # can have multiple  # can be missing page 2
-             '1120': ['1120page1', '1120page5', '1120page6'],  # page 6 added in 2018
-             'schedule1': ['schedule1page1'],
-             'schedule2': ['schedule2page1'],
-             'schedule3': ['schedule3page1'],
-             'schedule4': ['schedule4page1'],
-                        }
-                        
-      k1_forms = ['schedulecpage1', '1040page1']
-      
-      return supported_pages, k1_forms
+# local app imports
+import app.common as common
                   
                   
-def prediction_logic(similarities, supported_pages, k1_forms):
+def prediction_logic(similarities):
 
       proba_threshold = .4
+      rows = {}
       rows_all = {}
       y_pred_processed_all = pd.DataFrame()
+      supported_pages = common.define_supported_pages()
+      k1_forms = common.define_k1_forms()
       
       for name, doc in similarities.groupby('file_name'):
           
           rows = {}
+          i = 0
           
           for index, row in doc.iterrows():
+              i+=1
               
               # if similarity is higher than n
               if round(row['y_pred_similarity'], 2) > proba_threshold:
@@ -66,18 +57,16 @@ def prediction_logic(similarities, supported_pages, k1_forms):
                           
                   else: 
                       y_pred = row['y_pred_raw']
-                      # print("{}: door 5".format(y_pred))
                       
               # if similarity is NOT higher than n
               else:
                   y_pred = 'other'
-                  # print("{}: door 6".format(y_pred))
                   
               # append prediction to list
               rows.update({index: y_pred})
               rows_all.update(rows)
               
-      # append all predicitons for document to dataframe
+      # append all predictions for document to dataframe
       y_pred_processed = pd.DataFrame.from_dict(rows_all, orient='index', columns=['y_pred'])
       y_pred_processed['y_pred_processed'] = y_pred_processed['y_pred'].apply(lambda i: i if i in sum(supported_pages.values(), []) else 'other')
       
@@ -96,11 +85,11 @@ def merge_predictions_to_docs(y_pred_processed, similarities):
 def main(similarities):
       
       start = time.time()
-      supported_pages, k1_forms = create_helper_objects()
-      y_pred_processed = prediction_logic(similarities, supported_pages, k1_forms)
+      y_pred_processed = prediction_logic(similarities)
       similarities = merge_predictions_to_docs(y_pred_processed, similarities)
       
-      logging.info("{}s".format(round(time.time() - start, 4)))
+      logging.info("{0}s, {1}s avg per doc, {2}s per page".format(
+            round(time.time() - start, 4), round((time.time() - start)/len(similarities['file_name'].unique()), 4), round((time.time() - start)/len(similarities), 4)))
       return similarities
       
       

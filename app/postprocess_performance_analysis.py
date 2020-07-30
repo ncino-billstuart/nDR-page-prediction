@@ -1,8 +1,11 @@
 import pandas as pd
+import time
 import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
+import logging
+from tabulate import tabulate
 import os, inspect, sys
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -39,21 +42,25 @@ def create_visuals(similarities):
       f = sns.heatmap(cm, annot=True, cmap='Blues', fmt='g', xticklabels=columns, yticklabels=columns)
       plt.savefig(parentdir + '/results/confusion_matrix_normalized.png')
       
+      print(tabulate(report, headers='keys', tablefmt='psql'))
+      
       return report
 
 
 def calculate_page_performance(similarities):
 
       labeled = similarities[similarities['target'] != 'other']
-      print('recall: {}'.format(round(accuracy_score(labeled['target'], labeled['y_pred_processed']), 4)))
+      recall = round(accuracy_score(labeled['target'], labeled['y_pred_processed']), 4)
       
       labeled = similarities[similarities['y_pred_processed'] != 'other']
-      print('precision: {}'.format(round(accuracy_score(labeled['target'], labeled['y_pred_processed']), 4)))
+      precision = round(accuracy_score(labeled['target'], labeled['y_pred_processed']), 4)
       
       labeled = similarities[(similarities['target'] != 'other') | (similarities['y_pred_processed'] != 'other')]
-      print('non-other: {}'.format(round(accuracy_score(labeled['target'], labeled['y_pred_processed']), 4)))
+      non_other_accuracy = round(accuracy_score(labeled['target'], labeled['y_pred_processed']), 4)
       
-      print('overall accuracy: {}'.format(round(accuracy_score(similarities['target'], similarities['y_pred_processed']), 4)))
+      overall_accuracy = round(accuracy_score(similarities['target'], similarities['y_pred_processed']), 4)
+      
+      return recall, precision, non_other_accuracy, overall_accuracy
 
 
 def calculate_doc_performance(similarities):
@@ -62,8 +69,8 @@ def calculate_doc_performance(similarities):
       total_docs = len(doc_accuracy)
       no_error_docs = len(doc_accuracy[doc_accuracy == 1])
       error_docs = len(doc_accuracy[doc_accuracy != 1])
-      print('{} docs of {} total have errors'.format(error_docs, total_docs))
-      print(round(no_error_docs / total_docs, 3))
+      
+      return total_docs, error_docs
 
 
 def determine_error_type(similarities):
@@ -86,11 +93,16 @@ def determine_error_type(similarities):
       
       
 def main(similarities):
+      start = time.time()
       
       similarities = add_features(similarities)
       create_visuals(similarities)
-      calculate_page_performance(similarities)
-      calculate_doc_performance(similarities)
+      recall, precision, non_other_accuracy, overall_accuracy = calculate_page_performance(similarities)
+      total_docs, error_docs = calculate_doc_performance(similarities)
       similarities = determine_error_type(similarities)
+      
+      logging.info("{0}s, recall:{1}, precision: {2}, non-other acc: {3}, overall acc: {4}".format(
+            round(time.time() - start, 4), recall, precision, non_other_accuracy, overall_accuracy))
+      logging.info('{} docs of {} total have errors'.format(error_docs, total_docs))
       
       return similarities
