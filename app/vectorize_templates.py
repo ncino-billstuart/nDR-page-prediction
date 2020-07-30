@@ -2,10 +2,15 @@ import pickle
 from sklearn.feature_extraction.text import TfidfVectorizer
 import time
 import logging
+import os, inspect, sys
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
 
 # local app imports
-import preprocess_data
-import store_and_load_functions
+import app.preprocess_data as preprocess_data
+import app.common as common
 
 
 def vectorize_templates(templates):
@@ -23,9 +28,9 @@ def main(templates):
     
     for name, group in templates.groupby(['year']):
         vect_templates, vect, templates_columns = vectorize_templates(group)
-        store_and_load_functions.store_pickle(vect_templates, path='nDR-page-prediction/vectorized_templates/' + str(name) + '/', file_name='vect_templates')
-        store_and_load_functions.store_pickle(vect, path='nDR-page-prediction/vectorized_templates/' + str(name) + '/', file_name='vect')
-        store_and_load_functions.store_pickle(templates_columns, path='nDR-page-prediction/vectorized_templates/' + str(name) + '/', file_name='templates_columns')
+        common.store_pickle(vect_templates, path='nDR-page-prediction/vectorized_templates/' + str(name) + '/', file_name='vect_templates')
+        common.store_pickle(vect, path='nDR-page-prediction/vectorized_templates/' + str(name) + '/', file_name='vect')
+        common.store_pickle(templates_columns, path='nDR-page-prediction/vectorized_templates/' + str(name) + '/', file_name='templates_columns')
 
     logging.info("{}s".format(round(time.time() - start, 4)))
 

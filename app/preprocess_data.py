@@ -1,9 +1,14 @@
 import pandas as pd
 import time
 import logging
+import os, inspect, sys
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
 
 # local app imports
-import app.store_and_load_functions as store_and_load_functions
+import app.common as common
 
 
 def preprocess_templates(templates):
@@ -35,12 +40,13 @@ def preprocess_ocr(docs):
 def main():
     
     start = time.time()
-    path = 'predictions/'
-    bucket = 'sagemaker-page-prediction-poc'
+    path = 'full_page_ocr/gulfcoast-test-data/results/'
+    bucket = 'ncino-mlplatform-data-protected'
     
     # load data
-    docs = store_and_load_functions.load_csv_from_s3(bucket, path, file_name = 'full_page_ocr_sample.csv')
-    templates = store_and_load_functions.load_csv_from_s3(bucket, path, file_name = 'templates.csv')
+    s3_resource, s3_client = common.assume_data_role()
+    docs = common.load_csv_from_s3(s3_client, bucket, path, file_name = 'ocr_simple.csv')
+    templates = common.load_csv_from_s3(s3_client, bucket, path, file_name = 'templates.csv')
     
     # preprocess data
     templates = preprocess_templates(templates)
@@ -53,4 +59,3 @@ def main():
 if __name__ == '__main__':
     
     docs, templates = main()
-    print("complete")

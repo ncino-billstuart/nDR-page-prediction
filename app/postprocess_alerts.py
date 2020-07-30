@@ -11,6 +11,18 @@ sys.path.insert(0, parentdir)
 import app.common as common
 
 
+def identify_duplicate_pages(similarities):
+      
+      multiple_pages_ok = common.define_multiple_pages_ok()
+      
+      # removes pages where it is okay to have multiple
+      duplicate_pages = similarities[~similarities['y_pred_processed'].isin(multiple_pages_ok)]
+      duplicate_pages = duplicate_pages.groupby(['file_name', 'y_pred_processed'])['y_pred_processed'].agg('count')
+      duplicate_pages = duplicate_pages[duplicate_pages > 1]
+
+      return duplicate_pages
+
+
 def identify_missing_pages(similarities):
       
       # post processing to determine if there are missing pages
@@ -55,8 +67,19 @@ def main(similarities):
       
       start = time.time()
       
+      duplicate_pages = identify_duplicate_pages(similarities)
       missing_pages = identify_missing_pages(similarities)
       
-      logging.info("{0}s".format(round(time.time() - start, 4)))
+      logging.info("{0}s, {1}s avg per doc, {2}s per page".format(
+            round(time.time() - start, 4), round((time.time() - start)/len(similarities['file_name'].unique()), 4), round((time.time() - start)/len(similarities), 4)))
       
-      return missing_pages
+      return missing_pages, duplicate_pages
+      
+      
+if __name__ == '__main__':
+      similarities = pd.read_csv('nDR-page-prediction/results/similarities_saved_for_postprocessing.csv')
+      
+      missing_pages, duplicate_pages = main(similarities)
+      
+      missing_pages.to_csv('nDR-page-prediction/results/missing_pages.csv')
+      duplicate_pages.to_csv('nDR-page-prediction/results/duplicate_pages.csv')

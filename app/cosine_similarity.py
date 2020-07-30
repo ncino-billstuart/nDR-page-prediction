@@ -15,7 +15,6 @@ import seaborn as sns
 from sklearn.metrics.pairwise import linear_kernel, cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,20 +23,22 @@ logging.basicConfig(filename='nDR-page-prediction/results/log_cosine_similarity.
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
-sys.path.insert(0,parentdir)
+sys.path.insert(0, parentdir)
 
 # local app imports
 import app.preprocess_data as preprocess_data
-import app.store_and_load_functions as store_and_load_functions
+import app.common as common
 import app.vectorize_templates as vectorize_templates
 import app.postprocess_predictions as postprocess_predictions
+import app.postprocess_alerts as postprocess_alerts
+import app.postprocess_performance_analysis as postprocess_performance_analysis
 
 
 def load_proper_templates(year):
     
-    vect = store_and_load_functions.load_pickle(path='nDR-page-prediction/vectorized_templates/' + str(year) + '/', file_name='vect')
-    vect_templates = store_and_load_functions.load_pickle(path='nDR-page-prediction/vectorized_templates/' + str(year) + '/', file_name='vect_templates')
-    templates_columns = store_and_load_functions.load_pickle(path='nDR-page-prediction/vectorized_templates/' + str(year) + '/', file_name='templates_columns')
+    vect = common.load_pickle(path='nDR-page-prediction/vectorized_templates/' + str(year) + '/', file_name='vect')
+    vect_templates = common.load_pickle(path='nDR-page-prediction/vectorized_templates/' + str(year) + '/', file_name='vect_templates')
+    templates_columns = common.load_pickle(path='nDR-page-prediction/vectorized_templates/' + str(year) + '/', file_name='templates_columns')
     
     return vect, vect_templates, templates_columns
 
@@ -73,7 +74,7 @@ def calculate_similarity(vect_doc, vect_templates, templates_columns):
 def merge_similarities_and_doc(similarities, doc):
     
     # merge back to fields we care about
-    similarities = pd.merge(doc.reset_index()[['index', 'file_name', 'target', 'year', 'page', 'text']],
+    similarities = pd.merge(doc.reset_index(drop=True)[['file_name', 'target', 'year', 'page', 'text']],
                             similarities, how='inner', left_index=True, right_index=True)
 
     return similarities
@@ -94,22 +95,38 @@ def main(docs, templates):
         similarities = merge_similarities_and_doc(similarities, doc)
         similarities_all = similarities_all.append(similarities)
         i+=1
+    
+    similarities_all = similarities_all.reset_index(drop=True)
 
-    logging.info("{0}s, {1}s avg per doc".format(round(time.time() - start, 4), round((time.time() - start)/i, 4)))
-    return similarities
+    logging.info("{0}s, {1}s avg per doc, {2}s per page".format(
+        round(time.time() - start, 4), round((time.time() - start)/i, 4), round((time.time() - start)/len(similarities_all), 4)))
+    
+    return similarities_all
 
 
 if __name__ == '__main__':
     
-    vectorize_templates_bool = True
+    vectorize_templates_bool = False
+    development_bool = True
     
     docs, templates = preprocess_data.main()
     
     if vectorize_templates_bool:
         vectorize_templates.main(templates)
+        
+    # docs = docs.head(500). # sample
     
     similarities = main(docs, templates)
     
     similarities = postprocess_predictions.main(similarities)
+    
+    # similarities.loc[:, similarities.columns != 'text'].to_csv('nDR-page-prediction/results/similarities_saved_for_postprocessing.csv')
+    
+    missing_pages, duplicate_pages = postprocess_alerts.main(similarities)
+    
+    if development_bool:
+        similarities = postprocess_performance_analysis.main(similarities)
 
-    similarities.to_csv('nDR-page-prediction/results/similarities.csv')
+    similarities.loc[:, similarities.columns != 'text'].to_csv('nDR-page-prediction/results/similarities.csv')
+    missing_pages.to_csv('nDR-page-prediction/results/missing_pages.csv')
+    duplicate_pages.to_csv('nDR-page-prediction/results/duplicate_pages.csv')
